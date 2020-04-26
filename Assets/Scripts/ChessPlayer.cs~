@@ -1,0 +1,74 @@
+using System;
+using UnityEngine;
+
+public class ChessPlayer : MonoBehaviour
+{
+    //-------------------------------------------------------------------------
+    // Serialized members
+    
+    [SerializeField]
+    private ChessBoard m_board = null;
+
+    //-------------------------------------------------------------------------
+    // runtime members
+
+    private ChessPiece  m_heldPiece = null;
+    private Vector3     m_heldPieceScreenOffset = Vector3.zero;
+    private Camera      m_camera = null;
+
+    //-------------------------------------------------------------------------
+    // methods
+
+    void Start()
+    {
+        m_camera = GetComponent(typeof(Camera)) as Camera;
+    }
+
+    void Update() {
+        if (m_camera == null || m_board == null)
+            return;
+        
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (m_heldPiece == null)
+            {
+                Ray mouseRay        = m_camera.ScreenPointToRay(Input.mousePosition);
+                RaycastHit hitInfo  = new RaycastHit();
+                if (Physics.Raycast(mouseRay, out hitInfo))
+                {
+                    ChessPiece selectedPiece = hitInfo.collider.gameObject.GetComponent<ChessPiece>();
+                    if (selectedPiece != null)
+                    {
+                        m_heldPiece                 = selectedPiece;
+                        Vector3 heldPieceScreenPos  = m_camera.WorldToScreenPoint(m_heldPiece.transform.position);
+                        m_heldPieceScreenOffset     = heldPieceScreenPos - Input.mousePosition;
+                        //Debug.Log("grabbed:  "+m_heldPiece.gameObject);
+                    }
+                }
+            }
+        }
+        else if (Input.GetMouseButton(0) && m_heldPiece != null)
+        {
+            Ray mouseRay            = m_camera.ScreenPointToRay(Input.mousePosition + m_heldPieceScreenOffset);
+            RaycastHit[] hitsInfo   = Physics.RaycastAll(mouseRay);
+            if (hitsInfo.Length > 0)
+            {
+                foreach(RaycastHit hit in hitsInfo)
+                {
+                    if (hit.collider.gameObject == m_board.gameObject)
+                    {
+                        m_heldPiece.transform.position = hit.point;
+                        var (row, col) = m_board.GetBoardPosition(m_heldPiece);
+                        break;
+                    }
+                }
+            }
+        }
+        else if (m_heldPiece != null)
+        {
+            m_board.MovePiece(m_heldPiece);
+            //Debug.Log("dropped:  "+m_heldPiece.gameObject);
+            m_heldPiece = null;
+        }
+    }
+}
